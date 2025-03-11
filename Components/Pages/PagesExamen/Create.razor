@@ -1,84 +1,79 @@
-﻿@page "/Modelo/Create"
-@using Angel_Paredes_P2_AP1.Models
+﻿@page "/ciudades/nueva"
+@inject CiudadService Servicio
+@inject NavigationManager Navigation
 
-@*HTML*@
-<PageTitle>Crear</PageTitle>
-
-<EditForm Model="Modelo" OnValidSubmit="Crear">
+<EditForm Model="@ciudad" OnValidSubmit="@Guardar">
     <DataAnnotationsValidator />
     <ValidationSummary />
 
-    @if (mostrarError)
+    <div class="form-group mb-3">
+        <label>Nombre Ciudad:</label>
+        <InputText @bind-Value="ciudad.Nombre" class="form-control" />
+        <ValidationMessage For="@(() => ciudad.Nombre)" />
+    </div>
+
+    <h4 class="mt-4">Detalles</h4>
+
+    @foreach (var detalle in ciudad.Detalles)
     {
-        <div class="alert alert-danger mt-3" role="alert">
-            @MensajeError
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label>Fecha:</label>
+                        <InputDate @bind-Value="detalle.Fecha" class="form-control" />
+                        <ValidationMessage For="@(() => detalle.Fecha)" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label>Asignatura:</label>
+                        <InputText @bind-Value="detalle.Asignatura" class="form-control" />
+                        <ValidationMessage For="@(() => detalle.Asignatura)" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label>Monto:</label>
+                        <InputNumber @bind-Value="detalle.Monto" class="form-control" />
+                        <ValidationMessage For="@(() => detalle.Monto)" />
+                    </div>
+
+                    <div class="col-md-1 pt-4">
+                        <button type="button" class="btn btn-danger"
+                                @onclick="() => RemoverDetalle(detalle)">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     }
-    <div class="container">
-        <div class="card shadow-lg">
-            <div class="card-header text-center">
-                <h5 class="card-title">Crear</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label"><strong>ModeloId</strong></label>
-                        <div class="input-group">
-                            <InputNumber class="form-control" @bind-Value="Modelo.Id" readonly />
-                            <button type="button" class="btn btn-outline-primary bi bi-search" />
-                        </div>
-                    </div>
-                    <div class="col-md-6 mb-3">
-                        <label class="form-label"><strong>Fecha</strong></label>
-                        <InputDate class="form-control" @bind-Value="Modelo.Fecha"></InputDate>
-                    </div>
-                </div>
-                <div class="border border-success p-3 mt-3">
-                    <h5>Detalles</h5>
-                    <ModeloPicker ModeloId="Modelo.Id"/>
-                    <table class="table table-light">
-                        <thead class="table table-striped">
-                            <tr class="text-center">
-                                <th>Id</th>
-                                <th>x</th>
-                                <th>Remover</th>
-                            </tr>
-                        </thead>
-                        <tbody class="text-center">
-                            <tr>
-                                <th>Id</th>
-                                <th>x</th>
-                                <th>
-                                    <button type="button" class="btn btn-outline-danger bi bi-trash"></button>
-                                </th>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <hr />
-                </div>
-            </div>
-            @* Footer *@
-            <div class="card-footer text-center mt-2">
-                <a href="/Modelo/Index" class="btn btn-secondary">
-                    <span class="bi bi-arrow-left"></span> Volver
-                </a>
-                <button type="submit" class="btn btn-primary bi bi-floppy">Guardar</button>
-            </div>
-        </div>
+
+    <button type="button" class="btn btn-secondary mb-3" @onclick="AgregarDetalle">
+        <i class="bi bi-plus-circle"></i> Agregar Detalle
+    </button>
+
+    <div class="alert alert-info">
+        Total General: @ciudad.Detalles.Sum(d => d.Monto).ToString("C2")
+    </div>
+
+    <div class="mt-4">
+        <button type="submit" class="btn btn-primary">
+            <i class="bi bi-save"></i> Guardar
+        </button>
+        <a href="/ciudades" class="btn btn-secondary">Cancelar</a>
     </div>
 </EditForm>
 
 @code {
-    public Modelo Modelo { get; set; } = new Modelo();
-    private bool mostrarError = false;
-    private string MensajeError { get; set; }
+    private Ciudad ciudad = new Ciudad();
 
-    protected override async Task OnInitializedAsync()
+    private void AgregarDetalle() => ciudad.Detalles.Add(new Detalle());
+    private void RemoverDetalle(Detalle detalle) => ciudad.Detalles.Remove(detalle);
+
+    private async Task Guardar()
     {
+        ciudad.MontoTotal = ciudad.Detalles.Sum(d => d.Monto);
+        await Servicio.GuardarCiudadConDetalles(ciudad);
+        Navigation.NavigateTo("/ciudades");
     }
-
-    private async Task Crear()
-    {
-    }
-
 }
