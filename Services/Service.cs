@@ -1,41 +1,75 @@
-﻿using System.Linq.Expressions;
-using Angel_Paredes_P2_AP1.Models;
+﻿using Microsoft.EntityFrameworkCore;
 
-public class Services
+public class CiudadService
 {
-    public async Task<bool> Guardar(Modelo modelo)
+    private readonly AppContext _context;
+    
+    public CiudadService(AppContext context) => _context = context;
+
+    public async Task<List<Ciudad>> GetCiudadesConDetalles()
     {
-        return true;
+        return await _context.Ciudades
+            .Include(c => c.Detalles)
+            .Include(c => c.Proyectos)
+            .ToListAsync();
     }
 
-    public async Task<bool> Existe(int Id)
+    public async Task<Ciudad> GetCiudadConDetalles(int id)
     {
-        return true;
+        return await _context.Ciudades
+            .Include(c => c.Detalles)
+            .Include(c => c.Proyectos)
+            .FirstOrDefaultAsync(c => c.Id == id);
     }
 
-    public async Task<bool> Insertar(Modelo modelo)
+    public async Task GuardarCiudadConDetalles(Ciudad ciudad)
     {
-        return true;
+        using var transaction = _context.Database.BeginTransaction();
+        try
+        {
+            if (ciudad.Id == 0)
+                _context.Ciudades.Add(ciudad);
+            else
+                _context.Ciudades.Update(ciudad);
+            
+            await ActualizarProyecto(ciudad);
+            await _context.SaveChangesAsync();
+            await transaction.CommitAsync();
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 
-    public async Task<bool> Eliminar(int id)
+    private async Task ActualizarProyecto(Ciudad ciudad)
     {
-        return true;
+        var proyecto = await _context.Proyectos
+            .FirstOrDefaultAsync(p => p.CiudadId == ciudad.Id);
+        
+        if (proyecto == null)
+        {
+            proyecto = new Proyecto { CiudadId = ciudad.Id };
+            _context.Proyectos.Add(proyecto);
+        }
+        
+        proyecto.Presupuesto = ciudad.Detalles.Sum(d => d.Monto);
     }
 
-    public async Task<bool> Modificar(Modelo modelo)
+    public async Task EliminarCiudad(int id)
     {
-        return true;
-    }
+        var ciudad = await _context.Ciudades
+            .Include(c => c.Detalles)
+            .Include(c => c.Proyectos)
+            .FirstOrDefaultAsync(c => c.Id == id);
 
-    public async Task<Modelo?> Buscar(int id)
-    {
-        return new Modelo();
+        if (ciudad != null)
+        {
+            _context.Detalles.RemoveRange(ciudad.Detalles);
+            _context.Proyectos.RemoveRange(ciudad.Proyectos);
+            _context.Ciudades.Remove(ciudad);
+            await _context.SaveChangesAsync();
+        }
     }
-
-    public async Task<List<Modelo>> Listar(Expression<Func<Modelo, bool>> criterio)
-    {
-        return new List<Modelo>();
-    }
-
 }
